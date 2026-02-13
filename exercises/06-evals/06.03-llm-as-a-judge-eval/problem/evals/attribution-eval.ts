@@ -35,8 +35,35 @@ export const attributionToChainOfThoughtPaper = createScorer<
     const result = await generateObject({
       model: google('gemini-2.5-flash'),
       system: ATTRIBUTION_PROMPT,
-      messages: TODO, // TODO: Pass the chain of thought paper, the question and the answer given
-      schema: TODO, // TODO: Define the schema for the response
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: input,
+            },
+            {
+              type: 'file',
+              data: chainOfThoughtPaper,
+              mediaType: 'application/pdf',
+            },
+          ],
+        },
+        {
+          role: 'assistant',
+          content: [
+            {
+              type: 'text',
+              text: output,
+            },
+          ],
+        },
+      ], // TODO: Pass the chain of thought paper, the question and the answer given
+      schema: z.object({
+        score: z.enum(['A', 'B', 'C', 'D']),
+        feedback: z.string(),
+      }), // TODO: Define the schema for the response
     });
 
     // NOTE: it's important to use a string-based score for the

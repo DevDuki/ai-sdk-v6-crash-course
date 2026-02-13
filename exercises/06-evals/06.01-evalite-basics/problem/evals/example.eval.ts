@@ -1,3 +1,5 @@
+import { google } from '@ai-sdk/google';
+import { generateText } from 'ai';
 import { evalite } from 'evalite';
 
 evalite('Capitals', {
@@ -12,11 +14,14 @@ evalite('Capitals', {
     },
     {
       input: 'What is the capital of Italy?',
-      expected: 'Rome',
+      expected: 'rome',
     },
   ],
   task: async (input) => {
-    const capitalResult = TODO; // Implement this!
+    const capitalResult = await generateText({
+      model: google('gemini-2.0-flash-lite'),
+      prompt: input
+    }); // Implement this!
 
     return capitalResult.text;
   },
@@ -24,7 +29,7 @@ evalite('Capitals', {
     {
       name: 'includes',
       scorer: ({ input, output, expected }) => {
-        return output.includes(expected!) ? 1 : 0;
+        return output.toLowerCase().includes(expected!.toLowerCase()) ? 1 : 0;
       },
     },
   ],

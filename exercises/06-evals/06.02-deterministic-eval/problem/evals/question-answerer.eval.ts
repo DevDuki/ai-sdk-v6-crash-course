@@ -59,6 +59,14 @@ evalite('TS Release Notes', {
         <question>
         ${input}
         </question>
+        
+        <links>
+          ${links.map(link => `<link>${link.title}: ${link.url}</link>`)}
+        </links>
+        
+        <output-formatting>
+          Make sure your answer is no longer than 500 characters (including urls, syntax and whitespaces). And use markdown links to reference external resources.
+        </output-formatting>
       `,
     });
 
@@ -69,12 +77,16 @@ evalite('TS Release Notes', {
       name: 'Includes Markdown Links',
       scorer: ({ input, output, expected }) => {
         // TODO: check if the output includes markdown links
+        const regex = new RegExp(/\[*\\]\(*\)/);
+        return regex.test(output) ? 1 : 0;
       },
     },
     {
       name: 'Output length',
       scorer: ({ input, output, expected }) => {
         // TODO: check if the output is less than 500 characters
+        console.log('output length', output.length);
+        return output.length < 500 ? 1 : 0;
       },
     },
   ],
