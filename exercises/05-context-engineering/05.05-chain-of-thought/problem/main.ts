@@ -42,6 +42,14 @@ const result = streamText({
     <the-ask>
     Explain the code, using the article as a reference.
     </the-ask>
+    
+    <thinking-instructions>
+  Think about your answer first before you respond. Consider the optimal path for the user to understand the code, including each individual piece of syntax.
+</thinking-instructions>
+
+<output-formatting>
+  return two sections - a <thinking> block and an answer. The answer should NOT be wrapped in an <answer> tag.
+</output-formatting>
   `,
 });
 

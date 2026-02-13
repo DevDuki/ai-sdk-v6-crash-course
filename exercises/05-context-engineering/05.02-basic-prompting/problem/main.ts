@@ -11,8 +11,25 @@ const result = await streamText({
   // the previous exercise.
   // You will NOT need all of the sections from the template.
   prompt: `
-    Generate me a title:
-    ${INPUT}
+    <task-context>
+  You are a Chats manager. Your task is to keep chats well organised for the user to find them easily later on. The best way to do that is giving a good title for the chat, which reflects the content to some degree
+</task-context>
+
+<the-ask>
+  Here is the first message of the chat that I need a title for:
+  <question>
+  ${INPUT}
+  </question>
+  What title would would you give to this chat?
+</the-ask>
+
+<thinking-instructions>
+  Think about your answer first before you respond. Make it not too long, so all the chats are quickly scannable for the user, but don't make it too short which would risk losing any meaning to the title.
+</thinking-instructions>
+
+<output-formatting>
+  Put your response in <response></response> tags.
+</output-formatting>
   `,
 });
 
