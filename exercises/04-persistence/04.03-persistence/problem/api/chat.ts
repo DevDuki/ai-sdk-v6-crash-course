@@ -8,6 +8,7 @@ import {
   createChat,
   getChat,
   appendToChatMessages,
+  saveChats,
 } from './persistence-layer.ts';
 
 export const POST = async (req: Request): Promise<Response> => {
@@ -27,12 +28,14 @@ export const POST = async (req: Request): Promise<Response> => {
     });
   }
 
-  const chat = TODO; // TODO: Get the existing chat
+  const chat = await getChat(id); // TODO: Get the existing chat
 
   if (!chat) {
     // TODO: If the chat doesn't exist, create it with the id
+    await createChat(id);
   } else {
     // TODO: Otherwise, append the most recent message to the chat
+    await appendToChatMessages(id, [mostRecentMessage]);
   }
 
   // TODO: wait for the stream to finish and append the
@@ -42,7 +45,11 @@ export const POST = async (req: Request): Promise<Response> => {
     messages: await convertToModelMessages(messages),
   });
 
-  return result.toUIMessageStreamResponse();
+  return result.toUIMessageStreamResponse({
+    onFinish: async ({ responseMessage }) => {
+      await appendToChatMessages(id, [responseMessage]);
+    }
+  });
 };
 
 // http://localhost:3000/api/chat?chatId=123
