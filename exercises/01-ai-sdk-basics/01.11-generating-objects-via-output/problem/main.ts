@@ -1,5 +1,5 @@
 import { google } from '@ai-sdk/google';
-import { streamText } from 'ai';
+import { Output, streamText } from 'ai';
 import z from 'zod';
 
 const model = google('gemini-2.5-flash');
@@ -24,7 +24,24 @@ const finalText = await stream.text;
 //   the schema: z.object({
 //     facts: z.array(z.string()).describe('The facts about the imaginary planet. Write as if you are a scientist.'),
 //   })
-const factsResult = TODO;
+const factsResult = await ({
+  model,
+  prompt:
+    'Give me some facts about the planet mentioned in the following text. Also if you can count how many different' +
+    ' animals live on that planet and how many plants exist on that planet:' +
+    finalText,
+  output: Output.object({
+    schema: z.object({
+      facts: z
+        .array(z.string())
+        .describe(
+          'The facts about the imaginary planet. Write as if you are a scientist.',
+        ),
+      numberOfAnimals: z.number(),
+      numberOfFlora: z.number()
+    }),
+  }),
+});
 
 // TODO: Log the output of the result
 console.log(factsResult.output);

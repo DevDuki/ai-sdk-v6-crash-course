@@ -1,4 +1,9 @@
 import { useChat } from '@ai-sdk/react';
+import type {
+  UIDataTypes,
+  UIMessagePart,
+  UITools,
+} from 'ai';
 import React, { useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { ChatInput, Message, Wrapper } from './components.tsx';
@@ -44,12 +49,32 @@ const App = () => {
           // called fileToDataURL that you can use to
           // convert the file to a data URL. This
           // will be useful!
+          const dataUrl = file ? await fileToDataURL(file) : null;
+
+          const parts: UIMessagePart<UIDataTypes, UITools>[] = [
+            {
+              type: 'text',
+              text: input
+            }
+          ]
+
+          console.log('dataUrl', dataUrl);
+          console.log('file', file);
+          if (dataUrl && file && file.size > 0) {
+            parts.push({
+              type: 'file',
+              url: dataUrl,
+              mediaType: file.type
+            })
+          }
+
+          console.log('parts', parts);
 
           // NOTE: Make sure you handle the case where
           // `file` is null!
-          sendMessage({
+          await sendMessage({
             // NOTE: 'parts' will be useful
-            text: input,
+            parts,
           });
 
           setInput('');

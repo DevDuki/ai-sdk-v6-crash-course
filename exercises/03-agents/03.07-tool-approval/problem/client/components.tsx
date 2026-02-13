@@ -15,12 +15,14 @@ export const Wrapper = (props: {
 export const Message = ({
   role,
   parts,
+  addToolApprovalResponse
 }: // TODO: Add addToolApprovalResponse prop, a function which takes in:
 // - id: string
 // - approved: boolean
 {
   role: string;
   parts: MyUIMessage['parts'];
+  addToolApprovalResponse: ({ id, approved }: { id: string, approved: boolean }) => void;
 }) => {
   const prefix = role === 'user' ? 'User: ' : 'AI: ';
 
@@ -43,6 +45,45 @@ export const Message = ({
           // TODO: Check if part.state === 'approval-requested'
           // If so, render the email preview with approve/reject buttons
           // Use addToolApprovalResponse({ id: part.approval.id, approved: true/false })
+          if (part.state === 'approval-requested') {
+            return (
+              <div
+                key={index}
+                className="bg-yellow-800/20 border border-yellow-800 rounded p-3 text-sm"
+              >
+                <p className="font-semibold">
+                  Approve sending the following email
+                </p>
+                <p>To: {part.input.to}</p>
+                <p>Subject: {part.input.subject}</p>
+                <p>Body: {part.input.body}</p>
+                <div className="flex gap-4">
+                  <button
+                    className="bg-red-800/20 text-red-100 rounded p-2 active:scale-75 transition-all"
+                    onClick={() =>
+                      addToolApprovalResponse({
+                        id: part.approval.id,
+                        approved: false,
+                      })
+                    }
+                  >
+                    Decline
+                  </button>
+                  <button
+                    className="bg-green-800/20 text-green-100 rounded p-2 active:scale-75 transition-all"
+                    onClick={() =>
+                      addToolApprovalResponse({
+                        id: part.approval.id,
+                        approved: true,
+                      })
+                    }
+                  >
+                    Approve
+                  </button>
+                </div>
+              </div>
+            );
+          }
 
           if (part.state === 'output-available') {
             return (

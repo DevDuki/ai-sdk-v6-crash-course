@@ -1,4 +1,5 @@
 import { useChat } from '@ai-sdk/react';
+import { lastAssistantMessageIsCompleteWithApprovalResponses } from 'ai';
 import React, { useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { ChatInput, Message, Wrapper } from './components.tsx';
@@ -8,7 +9,9 @@ import type { MyUIMessage } from '../api/chat.ts';
 const App = () => {
   // TODO: Get addToolApprovalResponse from useChat
   // TODO: Add sendAutomaticallyWhen option using lastAssistantMessageIsCompleteWithApprovalResponses
-  const { messages, sendMessage } = useChat<MyUIMessage>({});
+  const { messages, sendMessage, addToolApprovalResponse } = useChat<MyUIMessage>({
+    sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses
+  });
 
   const [input, setInput] = useState(
     'Send an email to bob@example.com saying hello',
@@ -22,6 +25,7 @@ const App = () => {
           role={message.role}
           parts={message.parts}
           // TODO: Pass addToolApprovalResponse to Message
+          addToolApprovalResponse={addToolApprovalResponse}
         />
       ))}
       <ChatInput

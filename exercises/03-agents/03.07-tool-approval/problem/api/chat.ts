@@ -18,6 +18,7 @@ const tools = {
       body: z.string().describe('The body of the email'),
     }),
     // TODO: Add needsApproval: true to require user approval before sending
+    needsApproval: true,
     execute: async ({ to, subject, body }) => {
       // In a real app, this would send an email
       console.log(`Sending email to ${to}: ${subject}`);

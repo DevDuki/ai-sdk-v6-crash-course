@@ -1,12 +1,13 @@
 import { useChat } from '@ai-sdk/react';
 import React, { useState } from 'react';
 import { createRoot } from 'react-dom/client';
+import type { MyUIMessage } from '../api/chat.ts';
 import { ChatInput, Message, Wrapper } from './components.tsx';
 import './tailwind.css';
 
 const App = () => {
   // TODO - pass MyUIMessage as a type argument to useChat
-  const { messages, sendMessage } = useChat({});
+  const { messages, sendMessage } = useChat<MyUIMessage>({});
 
   const [input, setInput] = useState(
     'Tell me what todo items I have today.',
