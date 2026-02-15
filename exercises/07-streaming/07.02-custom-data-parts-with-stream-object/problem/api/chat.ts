@@ -6,14 +6,17 @@ import {
   streamText,
   type ModelMessage,
   type UIMessage,
+  streamObject,
+  Output,
 } from 'ai';
+import z from 'zod';
 
 export type MyMessage = UIMessage<
   never,
   {
     // TODO: Change the type to 'suggestions' and
     // make it an array of strings
-    suggestion: string;
+    suggestions: string[];
   }
 >;
 
@@ -43,7 +46,11 @@ export const POST = async (req: Request): Promise<Response> => {
         model: google('gemini-2.5-flash'),
         // TODO: Define the schema for the suggestions
         // using zod
-        schema: TODO,
+        output: Output.object({
+          schema: z.object({
+            suggestions: z.array(z.string())
+          })
+        }),
         messages: [
           ...modelMessages,
           {
@@ -55,26 +62,29 @@ export const POST = async (req: Request): Promise<Response> => {
             content:
               // TODO: Change the prompt to tell the LLM
               // to return an array of suggestions
-              'What question should I ask next? Return only the question text.',
+              'What question should I ask next? Return an array of suggestions.',
           },
         ],
       });
 
       const dataPartId = crypto.randomUUID();
 
-      let fullSuggestion = '';
+      let fullSuggestions: string[] = []
 
       // TODO: Update this to iterate over the partialObjectStream
-      for await (const chunk of followupSuggestionsResult.textStream) {
-        fullSuggestion += chunk;
+      for await (const chunk of followupSuggestionsResult.partialOutputStream) {
+        if (chunk.suggestions) {
+          fullSuggestions = chunk.suggestions.filter((suggestion): suggestion is string => !!suggestion)
+        }
+        console.log('chunk', chunk);
 
         // TODO: Update this to write the data part
         // with the suggestions array. You might need
         // to filter out undefined suggestions.
         writer.write({
           id: dataPartId,
-          type: 'data-suggestion',
-          data: fullSuggestion,
+          type: 'data-suggestions',
+          data: fullSuggestions,
         });
       }
     },
