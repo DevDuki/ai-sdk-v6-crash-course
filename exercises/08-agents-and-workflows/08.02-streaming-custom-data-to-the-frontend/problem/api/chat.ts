@@ -11,11 +11,12 @@ import {
 export type MyMessage = UIMessage<
   unknown,
   {
-    // TODO: declare custom data parts here
+    draft: string
+    feedback: string
   }
 >;
 
-const formatMessageHistory = (messages: UIMessage[]) => {
+const formatMessageHistory = (messages: MyMessage[]) => {
   return messages
     .map((message) => {
       return `${message.role}: ${message.parts
@@ -45,16 +46,16 @@ const WRITE_SLACK_MESSAGE_FINAL_SYSTEM = `You are writing a Slack message based 
 
 export const POST = async (req: Request): Promise<Response> => {
   // TODO: change to MyMessage[]
-  const body: { messages: UIMessage[] } = await req.json();
+  const body: { messages: MyMessage[] } = await req.json();
   const { messages } = body;
 
   const stream = createUIMessageStream<MyMessage>({
     execute: async ({ writer }) => {
       // TODO: write a { type: 'start' } message via writer.write
-      TODO;
+      writer.write({ type: 'start' });
 
       // TODO - change to streamText and write to the stream as custom data parts
-      const writeSlackResult = await generateText({
+      const writeSlackResult = streamText({
         model: google('gemini-2.5-flash'),
         system: WRITE_SLACK_MESSAGE_FIRST_DRAFT_SYSTEM,
         prompt: `
@@ -63,8 +64,22 @@ export const POST = async (req: Request): Promise<Response> => {
         `,
       });
 
+      const draftDataPartId = crypto.randomUUID();
+      let fullDraft = ''
+
+      for await (const chunk of writeSlackResult.textStream) {
+        fullDraft += chunk
+
+        writer.write({
+          id: draftDataPartId,
+          type: 'data-draft',
+          data: fullDraft,
+        })
+      }
+
+
       // TODO - change to streamText and write to the stream as custom data parts
-      const evaluateSlackResult = await generateText({
+      const evaluateSlackResult = streamText({
         model: google('gemini-2.5-flash'),
         system: EVALUATE_SLACK_MESSAGE_SYSTEM,
         prompt: `
@@ -72,9 +87,23 @@ export const POST = async (req: Request): Promise<Response> => {
           ${formatMessageHistory(messages)}
 
           Slack message:
-          ${writeSlackResult.text}
+          ${fullDraft}
         `,
       });
+
+      const feedbackDataPartId = crypto.randomUUID();
+      let fullFeedback = ''
+
+      for await (const chunk of evaluateSlackResult.textStream) {
+        fullFeedback += chunk
+
+        writer.write({
+          id: feedbackDataPartId,
+          type: 'data-feedback',
+          data: fullFeedback,
+        })
+      }
+
 
       const finalSlackAttempt = streamText({
         model: google('gemini-2.5-flash'),
@@ -84,16 +113,16 @@ export const POST = async (req: Request): Promise<Response> => {
           ${formatMessageHistory(messages)}
 
           First draft:
-          ${writeSlackResult.text}
+          ${fullDraft}
 
           Previous feedback:
-          ${evaluateSlackResult.text}
+          ${fullFeedback}
         `,
       });
 
       // TODO: merge the final slack attempt into the stream,
       // sending sendStart: false
-      writer.TODO;
+      writer.merge(finalSlackAttempt.toUIMessageStream({ sendStart: false }));
     },
   });
 

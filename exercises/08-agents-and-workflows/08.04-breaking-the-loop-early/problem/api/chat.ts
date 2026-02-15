@@ -1,10 +1,11 @@
 import { google } from '@ai-sdk/google';
 import {
   createUIMessageStream,
-  createUIMessageStreamResponse,
+  createUIMessageStreamResponse, Output,
   streamText,
   type UIMessage,
 } from 'ai';
+import z from 'zod';
 
 export type MyMessage = UIMessage<
   unknown,
@@ -90,6 +91,12 @@ export const POST = async (req: Request): Promise<Response> => {
         // break the loop early (that the message is good enough)
         const evaluateSlackResult = streamText({
           model: google('gemini-2.5-flash'),
+          output: Output.object({
+            schema: z.object({
+              feedback: z.string().optional(),
+              isGoodEnough: z.boolean()
+            })
+          }),
           system: EVALUATE_SLACK_MESSAGE_SYSTEM,
           prompt: `
             Conversation history:
@@ -107,14 +114,22 @@ export const POST = async (req: Request): Promise<Response> => {
 
         let feedback = '';
 
-        for await (const part of evaluateSlackResult.textStream) {
-          feedback += part;
+        for await (const part of evaluateSlackResult.partialOutputStream) {
+          if (part.feedback) {
+            feedback += part.feedback;
 
-          writer.write({
-            type: 'data-slack-message-feedback',
-            data: feedback,
-            id: feedbackId,
-          });
+            writer.write({
+              type: 'data-slack-message-feedback',
+              data: feedback,
+              id: feedbackId,
+            });
+          }
+        }
+
+        const finalEvaluationObject = await evaluateSlackResult.output;
+
+        if (finalEvaluationObject.isGoodEnough) {
+          break;
         }
 
         mostRecentFeedback = feedback;

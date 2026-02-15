@@ -52,91 +52,101 @@ export const POST = async (req: Request): Promise<Response> => {
         type: 'start',
       });
 
-      let step = TODO; // TODO: keep track of the step we're on
-      let mostRecentDraft = TODO; // TODO: keep track of the most recent draft
-      let mostRecentFeedback = TODO; // TODO: keep track of the most recent feedback
+      let step = 1; // TODO: keep track of the step we're on
+      let mostRecentDraft = ''; // TODO: keep track of the most recent draft
+      let mostRecentFeedback = ''; // TODO: keep track of the most recent feedback
 
       // TODO: create a loop which:
       // 1. Writes a Slack message
       // 2. Evaluates the Slack message
       // 3. Saves the feedback in the variables above
       // 4. Increments the step variable
+      while (step <= 2) {
+        // Write Slack message
+        const writeSlackResult = streamText({
+          model: google('gemini-2.5-flash'),
+          system: WRITE_SLACK_MESSAGE_FIRST_DRAFT_SYSTEM,
+          prompt: `
+          Conversation history:
+          ${formatMessageHistory(messages)}
+
+          Previous draft (if any):
+          ${mostRecentDraft}
+
+          Previous feedback (if any):
+          ${mostRecentFeedback}
+        `,
+        });
+
+        const draftId = crypto.randomUUID();
+
+        let draft = '';
+
+        for await (const part of writeSlackResult.textStream) {
+          draft += part;
+
+          writer.write({
+            type: 'data-slack-message',
+            data: draft,
+            id: draftId,
+          });
+        }
+
+        mostRecentDraft = draft;
+
+        // Evaluate Slack message
+        const evaluateSlackResult = streamText({
+          model: google('gemini-2.5-flash'),
+          system: EVALUATE_SLACK_MESSAGE_SYSTEM,
+          prompt: `
+          Conversation history:
+          ${formatMessageHistory(messages)}
+
+          Slack message:
+          ${mostRecentDraft}
+        `,
+        });
+
+        const feedbackId = crypto.randomUUID();
+
+        let feedback = '';
+
+        for await (const part of evaluateSlackResult.textStream) {
+          feedback += part;
+
+          writer.write({
+            type: 'data-slack-message-feedback',
+            data: feedback,
+            id: feedbackId,
+          });
+        }
+
+        mostRecentFeedback = feedback;
+
+        step++;
+      }
 
       // TODO: once the loop is done, write the final Slack message
       // by streaming one large 'text-delta' part (see the reference
       // material for an example)
 
-      const writeSlackResult = streamText({
-        model: google('gemini-2.5-flash'),
-        system: WRITE_SLACK_MESSAGE_FIRST_DRAFT_SYSTEM,
-        prompt: `
-          Conversation history:
-          ${formatMessageHistory(messages)}
-        `,
+      const textPartId = crypto.randomUUID();
+
+      writer.write({
+        type: 'text-start',
+        id: textPartId,
       });
 
-      const firstDraftId = crypto.randomUUID();
-
-      let firstDraft = '';
-
-      for await (const part of writeSlackResult.textStream) {
-        firstDraft += part;
-
-        writer.write({
-          type: 'data-slack-message',
-          data: firstDraft,
-          id: firstDraftId,
-        });
-      }
-
-      // Evaluate Slack message
-      const evaluateSlackResult = streamText({
-        model: google('gemini-2.5-flash'),
-        system: EVALUATE_SLACK_MESSAGE_SYSTEM,
-        prompt: `
-          Conversation history:
-          ${formatMessageHistory(messages)}
-
-          Slack message:
-          ${firstDraft}
-        `,
+      writer.write({
+        type: 'text-delta',
+        delta: mostRecentDraft,
+        id: textPartId,
       });
 
-      const feedbackId = crypto.randomUUID();
-
-      let feedback = '';
-
-      for await (const part of evaluateSlackResult.textStream) {
-        feedback += part;
-
-        writer.write({
-          type: 'data-slack-message-feedback',
-          data: feedback,
-          id: feedbackId,
-        });
-      }
-
-      // Write final Slack message
-      const finalSlackAttempt = streamText({
-        model: google('gemini-2.5-flash'),
-        system: WRITE_SLACK_MESSAGE_FINAL_SYSTEM,
-        prompt: `
-          Conversation history:
-          ${formatMessageHistory(messages)}
-
-          First draft:
-          ${firstDraft}
-
-          Previous feedback:
-          ${feedback}
-        `,
+      writer.write({
+        type: 'text-end',
+        id: textPartId,
       });
-
-      writer.merge(
-        finalSlackAttempt.toUIMessageStream({
-          sendStart: false,
-        }),
-      );
     },
   });
 

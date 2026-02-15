@@ -1,6 +1,7 @@
 import type { UIMessage } from 'ai';
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
+import type { MyMessage } from '../api/chat.ts';
 
 export const Wrapper = (props: {
   children: React.ReactNode;
@@ -19,13 +20,33 @@ export const Message = ({
   parts,
 }: {
   role: string;
-  parts: UIMessage['parts'];
+  parts: MyMessage['parts'];
 }) => (
   <div className="my-4">
     {parts.map((part) => {
       // TODO: use this component to handle the custom data parts
       // you have created in the api/chat.ts file
-      TODO;
+      if (part.type === 'data-feedback') {
+        return (
+          <div className="mb-4 text-white">
+            Feedback:
+            <ReactMarkdown>
+              {(role === 'user' ? 'User: ' : 'AI: ') + part.data}
+            </ReactMarkdown>
+          </div>
+        );
+      }
+
+      if (part.type === 'data-draft') {
+        return (
+          <div className="mb-4 text-white">
+            First Draft:
+            <ReactMarkdown>
+              {(role === 'user' ? 'User: ' : 'AI: ') + part.data}
+            </ReactMarkdown>
+          </div>
+        );
+      }
 
       if (part.type === 'text') {
         return (
