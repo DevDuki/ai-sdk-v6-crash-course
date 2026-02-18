@@ -29,7 +29,16 @@ export const POST = async (req: Request): Promise<Response> => {
       console.time('Model Calculation Time');
       // TODO: Use generateText to call a model, passing in the modelMessages
       // and writing your own system prompt.
-      const modelRouterResult = TODO;
+      const modelRouterResult = await generateText({
+        model: google('gemini-2.0-flash-lite'),
+        system: `
+          Based on the complexity of the user's message, you should determine whether a basic AI Model would be capable of giving
+          an as good of an answer as an advances model, or whether the question is too complex, which definitely requires a more advanced model.
+          
+          Return only 0 or 1 for your answer, where 1 means an advanced model is required and 0 a basic model would suffice.
+        `,
+        messages: modelMessages
+      });
 
       console.timeEnd('Model Calculation Time');
       console.log(
@@ -39,7 +48,9 @@ export const POST = async (req: Request): Promise<Response> => {
 
       // TODO: Use the modelRouterResult to determine which model to use.
       // If we can't determine which model to use, use the basic model.
-      const modelSelected: 'advanced' | 'basic' = TODO;
+      const modelSelected: 'advanced' | 'basic' = modelRouterResult.text.trim() === '1'
+        ? 'advanced'
+        : 'basic';
 
       const streamTextResult = streamText({
         model:
@@ -53,7 +64,13 @@ export const POST = async (req: Request): Promise<Response> => {
         streamTextResult.toUIMessageStream({
           // TODO: Add the model to the message metadata, so that
           // the frontend can display it.
-          messageMetadata: TODO,
+          messageMetadata: ({ part }) => {
+            if (part.type === 'start') {
+              return {
+                model: modelSelected
+              }
+            }
+          },
         }),
       );
     },

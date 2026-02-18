@@ -8,6 +8,7 @@ import {
   type ModelMessage,
   type UIMessage,
   type UIMessageStreamWriter,
+  Output,
 } from 'ai';
 import { tavily } from '@tavily/core';
 import z from 'zod';
@@ -34,7 +35,19 @@ const generateQueriesForTavily = (
   // Reply as a JSON object with the following properties:
   // - plan: A string describing the plan for the queries.
   // - queries: An array of strings, each representing a query.
-  const queriesResult = TODO;
+  const queriesResult = streamText({
+    model: google('gemini-2.5-flash-lite'),
+    output: Output.object({
+      schema: z.object({
+        plan: z.string().describe('A plan for the search'),
+        queries: z.array(z.string()).describe('The queries to search the web for information')
+      }),
+    }),
+    prompt: `
+      You are an assistant for doing thorough researches on a specific topic.
+      Based on the user's messages create a plan on how to gather information and generate 3-5 queries that are relevant to the topic
+    `
+  });
 
   return queriesResult;
 };
@@ -46,9 +59,19 @@ const displayQueriesInFrontend = async (
   const queriesPartId = crypto.randomUUID();
   const planPartId = crypto.randomUUID();
 
-  for await (const part of queriesResult.partialObjectStream) {
+  for await (const part of queriesResult.partialOutputStream) {
     // TODO: Stream the queries and plan to the frontend
-    TODO;
+    writer.write({
+      type: 'data-plan',
+      data: part.plan ?? '',
+      id: planPartId
+    });
+
+    writer.write({
+      type: 'data-queries',
+      data: part.queries?.filter((query): query is string => !!query) ?? [],
+      id: queriesPartId
+    })
   }
 };
 
@@ -85,7 +108,18 @@ const streamFinalSummary = async (
   // TODO: Use streamText to generate a final response to the user.
   // The response should be a summary of the search results,
   // and the sources of the information.
-  const answerResult = TODO;
+  const answerResult = streamText({
+    model: google('gemini-2.5-flash-lite'),
+    system: `
+      You are an assistant that summarises some research results into easy to understand paragraphs.
+      
+      The following were the search results:
+      ${searchResults.map(result => `
+        <searchResult>${result.response.answer}</searchResult>      
+      `)}
+    `,
+    prompt: messages,
+  });
 
   writer.merge(
     // NOTE: We send sendStart: false because we've already
@@ -108,7 +142,7 @@ export const POST = async (req: Request): Promise<Response> => {
       await displayQueriesInFrontend(queriesResult, writer);
 
       const scrapedPages = await callTavilyToGetSearchResults(
-        (await queriesResult.object).queries,
+        (await queriesResult.output).queries,
       );
 
       await streamFinalSummary(
